@@ -31,9 +31,8 @@ const texts = {
     noAlert: 'У вас нет активных уведомлений.',
     currentAlert: 'Ваше текущее уведомление установлено на сумму: $',
     alertDeleted: 'Уведомление удалено.',
-    depositAlertTriggered: 'Уведомление выполнено и удалено. Доступен депозит в размере до $',
+    depositAlertTriggered: 'Доступен депозит в размере до $',
     invalidAmount: 'Пожалуйста, введите корректное число.',
-    errorFetching: 'Произошла ошибка при получении данных. Повторная попытка будет через 5 секунд.',
     backToMenu: 'Вернуться в меню',
   },
   en: {
@@ -50,9 +49,8 @@ const texts = {
     noAlert: 'You have no active alerts.',
     currentAlert: 'Your current alert is set to: $',
     alertDeleted: 'Alert deleted.',
-    depositAlertTriggered: 'Alert fulfilled and removed. Deposit available up to $',
+    depositAlertTriggered: 'Deposit available up to $',
     invalidAmount: 'Please enter a valid number.',
-    errorFetching: 'Error fetching data. Retrying in 5 seconds.',
     backToMenu: 'Back to menu',
   },
 }
@@ -168,7 +166,6 @@ bot.action('delete_alert', (ctx) => {
 
   if (userDataStore[userId]) {
     delete userDataStore[userId].alertAmount
-    delete userDataStore[userId].notified
     saveUserData()
   }
 
@@ -198,7 +195,6 @@ bot.on('text', (ctx) => {
 
     userDataStore[userId].alertAmount = amount
     userDataStore[userId].awaitingAmount = false
-    delete userDataStore[userId].notified // Убедимся, что notified сброшен при создании нового уведомления
     saveUserData()
 
     ctx.reply(
@@ -209,7 +205,7 @@ bot.on('text', (ctx) => {
 })
 
 // Функция для выполнения HTTP-запросов с повторными попытками
-async function fetchWithRetry(url, options, maxRetries = 5, retryDelay = 5000) {
+async function fetchWithRetry(url, options, maxRetries = 50, retryDelay = 5000) {
   let lastError
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -315,7 +311,7 @@ async function checkDeposits() {
 
     // Отправка уведомлений пользователям
     Object.entries(userDataStore).forEach(([userId, userData]) => {
-      if (userData.alertAmount && !userData.notified) {
+      if (userData.alertAmount) {
         const userAmount = BigInt(Math.floor(userData.alertAmount))
 
         if (maxAllowedDeposit > userAmount) {
@@ -334,9 +330,8 @@ async function checkDeposits() {
               console.error(`Failed to send notification to user ${userId}:`, error)
             })
 
-          // Отметить, что уведомление было отправлено и удалить его
-          delete userData.alertAmount
-          delete userData.notified
+          // // Отметить, что уведомление было отправлено и удалить его
+          // delete userData.alertAmount
           saveUserData()
         }
       }
